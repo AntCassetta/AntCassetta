@@ -18,7 +18,7 @@ from tester import dump_classifier_and_data
 sys.path.append("../tools/")
 
 
-### Task 1: Select what features you'll use.
+### Task 1: Select features.
 ### features_list is a list of strings, each of which is a feature name.
 ### The first feature must be "poi".
 features_list = ['poi','salary', 'bonus', 'exercised_stock_options', 'total_stock_value']
@@ -44,7 +44,6 @@ with open("final_project_dataset.pkl", "r") as data_file:
 ### Store to my_dataset for easy export below.
 
 my_dataset = data_dict
-
 
 #Set all NaN values to zero
 for name in my_dataset.keys():
@@ -118,8 +117,8 @@ for train_idx, test_idx in cv:
         features_test.append( features[jj] )
         labels_test.append( labels[jj] )
 
-### Task 4: Try a varity of classifiers
-
+        
+### Task 4: Experiment with varity of classifiers
 
 #Initial test of GaussianNB no custom features
 print("\n")
@@ -152,7 +151,7 @@ dt_recall = metrics.recall_score(pred, labels_test)
 print("defalut dt accuracy {}, precision {}, recall {}".format(round(dt_score, 2), dt_precision, dt_recall))
 
 
-#set features list to include two custome features 
+#set features list to include the two custome features 
 features_list = ['poi','salary', 'bonus', 'exercised_stock_options', 
                  'total_stock_value','frac_to_poi', 'frac_from_poi']
 
@@ -208,8 +207,7 @@ print("Custom feature dt accuracy {}, precision {}, recall {}".format(round(dt_s
 print("DT feature importance {}".format(clf.feature_importances_))
 
 
-### Task 5: Tune your classifier to achieve better than .3 precision and recall 
-### using our testing script.
+### Task 5: Tune classifier to achieve better than .3 precision and recall based on testing scrip.
 
 
 #Exploring tuning of SVM via GridSearchCV
@@ -281,9 +279,7 @@ print("\nGaussianNB prformace according to tester.test_classifier")
 test_classifier(clf, my_dataset, features_list)
 
 
-### Task 6: Dump your classifier, dataset, and features_list so anyone can
-### check your results. You do not need to change anything below, but make sure
-### that the version of poi_id.py that you submit can be run on its own and
-### generates the necessary .pkl files for validating your results.
+### Task 6: Dump classifier, dataset, and features_list so anyone can
+### check results.
 
 dump_classifier_and_data(clf, my_dataset, features_list)
