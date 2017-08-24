@@ -1,0 +1,898 @@
+Exploring Red Wine
+========================================================
+##by Anthony "Ant" Cassetta
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load all packages used in the analysis.
+# Set parameter "echo", "message" and "warning" to FALSE.
+# Prevents the code from displaying in the knitted HTML output.
+
+library(ggplot2)
+library(knitr)
+library(gridExtra)
+library(scales)
+library(data.table)
+library(dplyr)
+library(reshape2)
+library(corrplot)
+library(GGally)
+
+knitr::opts_chunk$set(fig.width=9, fig.hight=6, 
+                        echo=FALSE, warning=FALSE, message=FALSE)
+
+```
+
+```{r echo=FALSE, Load_the_Data}
+# Load the Data
+
+reds <- read.csv('wineQualityReds.csv')
+```
+
+#Introduction
+
+Data Set: 
+Red Wine Quality
+
+Prompt question:
+Which chemical properties influence the quality of red wines?
+
+This tidy dataset contains 1,599 entries of red wines with 11 features on the chemical 
+properties of the wine. 1 feature acting as a line ID, which will be ignored,
+and one label holding the rated quality.
+
+At least 3 wine experts rated the quality of each wine, 
+providing a rating between 0 (terrible) and 10 (excellent).
+
+
+```{r echo=FALSE, Univariate_Plots}
+dim(reds)
+```
+
+
+The output above confirms the provided counts on the data-set.
+We have approximately 1600 rows each containing 13 variables total, 11 related to 
+chemical properties, 1 acting as an id number of the row, 
+and 1 holing the quality rating.
+
+
+#Univariate Plots
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+str(reds)
+```
+
+
+Taking a look at the structure of the data shows every column is in a numeric format.
+This will make manipulation of the values very straight forward.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+summary(reds)
+```
+
+
+The above is a summary of each features data. This output is to dense to be helpful. 
+Lets dive into something more specific.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#Plot Quality
+
+ggplot(data = reds, aes(x = quality)) +
+  geom_bar(color = 'black', fill = 'skyblue') + 
+  scale_x_continuous(breaks= seq(3,8,1))
+```
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+summary(reds$quality)
+```
+
+
+Plotting a bar chart of the red wine quality scores shows some interesting things.
+the data appears to have high density around the upper middle quality scores 5 and 6.
+The mode wine quality is 5, our median score is wines of quality 6
+and the average quality score is 5.6.
+
+Another notable characteristic, there are no wines scored below a 3, and none scored above an 8.
+This makes sense for 2 reasons. firstly, the scores are likely a rounded average computed
+from the three wine reviewers individual scores. Logically its unlikely all three reviews would grant a perfect 0 or a perfect 10.
+Additionally, know the data is tidy. 
+It's likely if there where a few extreme cases these were simply omitted.
+
+
+```{r}
+#plot alcohol percentage
+
+ggplot(data = reds, aes(x = reds$alcohol)) +
+  geom_bar(color = 'black', fill = '#F79420')+ 
+  scale_x_continuous(breaks = seq(1,15,1)) +
+  xlab("Alchohal percentage")
+```
+
+
+The above histogram displays the count of each Alcohol percentage.
+all though this level of detail could be useful later in our comparisons.
+At the moment there is to much information to ingest.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#Properly binned alcohol percentage
+
+ggplot(data = reds, aes(x = reds$alcohol)) +
+  geom_bar(binwidth = .5, color = 'black', fill = '#F79420')+ 
+  scale_x_continuous(breaks = seq(1,15,.5)) +
+  xlab("Alchohal percentage")
+```
+
+```{r}
+summary(reds$alcohol)
+```
+
+
+The histogram above represents the approximate alcohol percentages of each wine.
+each bin holds an interval of 0.5 percent. The x scale increments every 0.5 percent.
+
+From this plot we can see the mode percentage is ~9.5%,
+The minimum is ~8.5%
+The maximum is ~15%
+
+The summary data output confirms these estimations and also provides the mean
+percentage which is ~10%. 
+Based on the plot above a more reliable number for a common percentage 
+would be the mode rather than the mean.
+
+Later we'll take a look at alcohol percentage in relation to quality.
+
+
+```{r}
+#plot sulfur Dioxide
+
+ggplot(data = reds, aes(x = reds$total.sulfur.dioxide)) + 
+  geom_histogram(binwidth = 1, color = 'black', fill = 'yellow') +
+  xlab("Total Sulfur Dioxide")
+```
+
+
+The above is a plot of total Sulfur Dioxide, a chemical used to protect the wine from spoiling.
+This visual shows some interesting variations in the levels of SO2 but it also has a long tail.
+The tail is due to two extreme case wines with S02 above 250.
+
+Lets chop those two outliers off for now and adjust the bin-width to get something more useful.
+
+
+```{r}
+#omit outliers and adjust bins of total So2
+
+ggplot(data = reds, aes(x = reds$total.sulfur.dioxide))+ 
+  geom_histogram(binwidth = 5, color = 'black', fill = 'yellow') +
+  scale_x_continuous(breaks= seq(0, 200, 10), limits = c(0,200)) +
+    xlab("Total Sulfur Dioxide")
+
+```
+
+
+```{r}
+summary(reds$total.sulfur.dioxide)
+```
+
+
+Even after removing the 2 outliers we still see a skewed distribution but this information
+is easier to examine. 
+The histogram shows, the median value to be ~35 units
+The mode appears at ~25 units
+
+
+Our summary output indicates the Median is exactly 38 units
+and our mead SO2 concentration is 46 units
+
+
+```{r}
+#Plot pH
+
+ggplot(aes(reds$pH), data = reds) + 
+  geom_histogram(color ='black', fill= "violet") + 
+  scale_x_continuous(breaks = seq(0,5,.1))
+```
+```{r}
+summary(reds$pH)
+```
+
+
+The plot and summary above display information about the pH levels of the red wines. 
+We can see the mean pH level is 3.3, the min pH is 2.7, and the max is 4.0.
+We can consider the min and max in this case outliers as the IQR is between
+3.2 and 3.4.
+
+we can also see the distribution of pH level across our sample is normal.
+
+
+```{r}
+#Plot sulphates
+
+ggplot(aes(reds$sulphates), data = reds) + 
+  geom_histogram(color ='black', fill= "blue") +
+  scale_x_log10(breaks = seq(0,2.5,.1))
+```
+```{r}
+summary(reds$sulphates)
+```
+
+
+The above plot and summary visualize the sulphates of each wine. 
+I applied scale x log10 in order to mitigate the effects of the long-tail. 
+
+Our summary displays the min, max and mean values, 0.33, 2.0, and 0.65.
+Given the skewed nature of the data for reporting sulphate contents the median 0.62
+is more reliable than the mean.
+
+
+```{r}
+#plot residual sugars
+
+ggplot(aes(reds$residual.sugar), data = reds) + 
+  geom_histogram(color ='black', fill= "pink") + 
+  scale_x_log10(breaks = seq(0,16,2)) +
+  scale_y_continuous(breaks = seq(0,400,50))
+```
+```{r}
+summary(reds$residual.sugar)
+```
+
+
+The above plot and summary visualize residual sugar. 
+Similarly to sulphates, residual sugar presented with a long tail, so I applied
+scaled x log10.
+
+The first quartile is 1.9 mg/L, the third is 2.6 mg/L both the mean and median fall within
+the IQR as 2.5 mg/L and 2.2 mg/L respectively.
+
+Any further investigation into this variable will need to account for or omit the outliers.
+
+
+```{r}
+#plot free sulfer dioxide
+
+ggplot(aes(x= free.sulfur.dioxide ), data = reds) + 
+geom_histogram(fill = 'lightgreen', color = 'black') +
+  scale_x_log10(breaks = seq(0,80,10))
+```
+
+```{r}
+summary(reds$free.sulfur.dioxide)
+```
+
+
+Plot of free sulfur dioxide
+The mean of free SO2 is 15.9, median 14.0.
+After applying scale x log ten we can more easily see the bounds of the IQR between
+7, and 21.
+
+
+```{r}
+#Plot Chlorides
+
+ggplot(aes(x=chlorides), data = reds) + 
+geom_histogram(fill = 'cyan', color = 'black') +
+  scale_x_log10(breaks = seq(0,1,0.1))
+```
+
+```{r}
+summary(reds$chlorides)
+```
+
+Plot of Chlorides, again applying log ten to eliminate the long tail. 
+Outliers are still present and would need to be addressed if diving further into this variable.
+Min, max and median are 0.01, 0.61, 0.08 respectively, illustrating the wide range.
+
+
+```{r}
+#plot citric acid
+
+ggplot(aes(x= reds$citric.acid ), data = reds) + 
+geom_histogram(fill = 'red', color = 'black')
+```
+
+```{r}
+summary(reds$citric.acid)
+```
+
+
+Citric acid content appears to be a bi-modal distribution. 
+The mean and median are 0.27, 0.26.
+min and max are 0 and 1 respectively.
+The mode is also 0, indicating that it's common for red wines to contain no citric acid at all.
+
+
+```{r}
+#plot volatile acidity
+
+ggplot(aes(x= reds$volatile.acidity), data  = reds) + 
+geom_histogram(fill = 'purple', color = 'black')
+```
+
+```{r}
+summary(reds$volatile.acidity)
+```
+
+
+Volatile acidity is normally distributed with a mean of 0.53 and a median of 0.52
+The IQR is between 0.39 and 0.64
+
+
+```{r}
+#plot fixed acidity
+
+ggplot(aes(x= reds$fixed.acidity), data = reds) + 
+geom_histogram(fill = '#A8383B', color = 'black')
+```
+
+```{r}
+summary(reds$fixed.acidity)
+```
+
+
+Fixed acidity is also normally distributed.
+mean and median are 8.3 and 8.0 respectively. 
+Something interesting to notice is the valley at about 7.5.
+taking a more detailed look at that could bare fruit.
+
+
+# Univariate Analysis
+
+### Overview of Dataset:
+
+1599 rows, 13 columns
+Every column contains a numeric value, either and integer or general numeric.
+11 chemical variables, 1 index number and 1 quality rating.
+
+### Features of Interest:
+
+The main feature of interest is the quality rating. This analysis will explore what variable 
+correlations exist and possible causation of a higher quality rating.
+
+### Possible Supporting Features in the Dataset:
+
+Initial supporting variables include Alcohol percentage, Total Sulfur Dioxide content,
+Volatile acidity, and residual Sugar.
+I'd also like to explore PH level and acidity.
+
+### Augmented Features:
+
+Several of the variables posses a long-tailed or skewed distribution. In order to
+visualize a more normalized distribution log 10 has been applied to the following variables;
+Sulfates, Residual Sugar, Chlorides and Sulfur Dioxide. 
+
+
+# Bivariate Plots Section
+
+
+```{r}
+#plot Alchohol percent across quality
+
+ggplot(data = reds, aes(x = quality, y = alcohol)) +
+  geom_jitter(color = 'orange', alpha = 1/4)
+```
+
+
+Above is a scatter plot displaying a point of every Alcohol percent by quality rating.
+Each opaque point represents 4 counts, in order to better indicate density. Notice neither quality of 3 nor 8
+have solid points, indicating there are fewer that 4 occurrences of each alcohol percentage per-rating.
+
+
+```{r}
+#Regroup data inorder to pull metrics per-quality
+
+quality_groups <- group_by(reds, quality)
+reds_by_quality <- summarise(quality_groups,
+                             alcohol_mean = mean(alcohol),
+                             alcohol_median = median(alcohol),
+                             min_alcohol = min(alcohol),
+                             max_alcohol = max(alcohol),
+                             n = n())
+reds_by_quality <-  arrange(reds_by_quality, quality)
+
+
+head(reds_by_quality)
+
+```
+
+
+After grouping the data by quality we're able to pull out some statistics per-quality rating. 
+Across all quality ratings in the entire sample set, the minimum percentage is 8.4%, the maximum is 14.9%.
+
+The highest quality rating is 8.
+The min and max alcohol percentage of quality 8 wines are 9.8% and 14% respectively.
+The mean percentage is 12%
+
+The lowest quality rating is 3.
+The min and max alcohol percentages are 8.4% and 11% respectively.
+The mean percentage being ~10%
+
+Refer to the output table for further stats on the individual quality ratings.
+
+
+```{r echo=FALSE, Bivariate_Plots}
+#Plot alchohol precentage per quality including the mean percentage per quality
+
+ggplot(data = reds, aes(x = quality, y = alcohol)) +
+  geom_point(color = 'orange', alpha = 1/10) +
+  geom_line(stat = 'summary', fun.y = mean, color = 'blue') 
+  #geom_smooth(method = 'lm', color = 'red')
+
+```
+
+
+In the above plot, we can see the distribution of alcohol percentage across quality rating
+and with the mean percentages overlay (the blue line).
+
+With this visualization we can see an upward trend of the mean. 
+This trend makes sense when we recall the same trend was reported in our summary of alcohol data above.
+The visualization adds some much need perspective. For example, we can see that density of the points across qualities is quite variable. 
+
+For instance, quality 5, 6, 7 are all rather densely packed around the mean
+in contrast 3, 4, 8 are rather spread out. Also, notice that peak at quality 4, if you look closely
+at quality of 4 you'll notice an outlier. This outlier explains the deviation from the trend.
+
+Visually we can speculate a weak positive correlation between alcohol and quality rating but its difficult to tell how strong that correlation is.
+Lets mathematically check our conclusion with Pearson's Correlation.
+
+
+```{r}
+with(reds, cor.test(quality, alcohol, method = 'pearson'))
+```
+
+
+The result of calculating Pearson's product-moment correlation between quality rating
+and alcohol percentage is the (rounded) coefficient = 0.5
+according to the scale of coefficients this is scored as a moderate correlation.
+
+So although we cannot infer causation, we can say that there is an observable relation
+between higher quality wines and higher alcohol percentage.
+
+Now lets look at total sulfur dioxide and quality...
+
+
+```{r}
+#Group wines by quality and total sulfur dioxide
+
+reds_by_SO <- summarise(quality_groups,
+                             SO2_count_mean = mean(total.sulfur.dioxide),
+                             SO2_count_median = median(total.sulfur.dioxide),
+                             min_SO2 = min(total.sulfur.dioxide),
+                             max_SO2 = max(total.sulfur.dioxide),
+                             n = n())
+reds_by_SO <-  arrange(reds_by_SO, quality)
+
+
+head(reds_by_SO)
+```
+
+
+The table above represents the metrics of sulfur dioxide (SO2) per quality rating.
+Across all quality levels, the minimum total SO2 is 6, the max is 289
+The mean levels across each quality range from (rounded) 25 - 57 mg/L
+
+lets visualize some of this data...
+
+
+```{r}
+#plot total So2 by quality
+
+ggplot(data = reds, aes(x = quality, y = total.sulfur.dioxide)) +
+  geom_point(color = 'blue', alpha = 1/20) +
+  geom_line(stat = 'summary', fun.y = mean, color = 'red')
+```
+
+
+The above plot is displaying Total SO2 by quality rating. 
+I've also included the mean SO2 across quality (the red line).
+
+The first thing to notice is that our plot looks much like our earlier plot of quality
+in the univariant analysis.
+
+Also notice that altering the transparency of the points isn't helping us much here.
+lets try and dive deeper into this data by spreading the data out some and 
+ignoring those to outliers in quality group 7 (they're up at the top of the plot).
+
+
+```{r}
+#apply jitter and omit outliers
+
+ggplot(data = reds, aes(x = quality, y = total.sulfur.dioxide)) +
+  geom_jitter(color = 'blue', alpha = 1/5) +
+  scale_x_continuous(breaks = seq(3,8,1)) +
+  scale_y_continuous( limits = (c(0, quantile(reds$total.sulfur.dioxide, .95)))) +
+  geom_line(stat = 'summary', fun.y = mean, color = 'red')
+```
+
+
+That's a bit better, jittering the points allows us to more clearly see the 
+distributions against the mean total SO2 content.
+Based on our two visualizations so far the SO2 and quality don't seem to have a strong meaningful relationship.
+
+lets check our findings with Pearson's r.
+
+
+```{r}
+with(reds, cor.test(quality, total.sulfur.dioxide, method = 'pearson'))
+```
+
+
+The result of calculating Pearson's product-moment correlation between quality rating
+and SO2 mg/L present is the (rounded) coefficient = -0.2.
+
+This means there is a weak negative correlation between total So2 and quality. This weak correlation alone is not enough to form a notable hypothesis. Total So2 could be used With additional features to further explore the influence of this correlation.
+
+Lets look at total SO2 in relation to Alcohol percentage...
+
+
+```{r}
+#plot total So2 by alchohol percentage
+
+ggplot(aes(alcohol, total.sulfur.dioxide), data = reds) +
+  geom_point(alpha = 1/5)+
+  geom_smooth(method = 'lm', color = 'red') +
+  scale_x_continuous(breaks = seq(8,16, 0.5))+
+  ylim(0, quantile(reds$total.sulfur.dioxide, .95))+
+  xlab("Alcohol percentage") + 
+  ylab("total SO2 units")
+```
+
+
+The above plot visualizes amount of SO2 present per alcohol percentage. 
+The red line represented the ideal match as a liner model. 
+As you can see the points are quite variable.
+
+lets compute the correlation...
+
+
+```{r}
+with(reds, cor.test(alcohol, total.sulfur.dioxide, method = 'pearson'))
+```
+
+
+The result of calculating Pearson's product-moment correlation between alcohol percentage
+and SO2 present is the (rounded) coefficient = -0.2.
+
+As with SO2 and quality. This implies a weak connection between Alcohol percent 
+and the total amount of SO2 present but again this is not a strong enough correlation to build a hypothesis on.
+
+Lets zoom out and gain a better understanding of overall correlations in the data...
+
+
+```{r}
+reds <- subset(reds, select = -X)
+corrplot(cor(reds))
+```
+
+
+Using corrplot() we can get a better idea of correlated variables, by looking at
+the entire data sets correlations mapped out.
+
+For example we can see that density and fixed acidity are positively correlated
+and Density and alcohol are negatively correlated.
+We can see, pH is negatively correlated with fixed acidity.
+Fixed acidity is also positively correlated with citric acid 
+
+lets look at fixed acidity and pH...
+
+
+```{r}
+#plot pH by fixed acidity
+
+ggplot(aes(x = pH, y = fixed.acidity), data = reds) + 
+  geom_point(alpha = 1/4) +
+  geom_smooth(method='lm', color='red')
+
+```
+
+
+After looking at our correlation plot, we observed that pH was negatively correlated
+with fixed acidity. The visual depicts this relationship and also shows us that the
+pH is clustered roughly between 3.2 and 3.5 pH.
+
+
+```{r}
+summary(reds$pH)
+```
+
+
+As we see from the above summary, the observed cluster of points between pH. 3.2 and 3.5 make sense
+as the are points within the IQR
+
+
+```{r}
+#plot fixed acidity by density
+
+ggplot(aes(x = density, y = fixed.acidity), data = reds) + 
+  geom_point() +
+  geom_smooth(method='lm', color='red') 
+
+```
+
+
+The above plot visualizes the fixed acidity by density.
+This visual corroborates the trend reported by corPlot our, 
+there is a clear positive correlation between the two features.
+
+
+# Bivariate Analysis
+
+
+### Relationship observations:
+
+Investigating quality against alcohol percentage showed a medium correlation.
+indicating that a higher alcohol content tended to have a higher rating in some cases.
+
+Quality against total SO2 indicated a weak negative correlation. Indicating that 
+sometimes a higher rating had less total SO2, but frequently not.
+The same can be said when comparing total SO2 per alcohol percentage.
+
+In other words neither Alcohol percentage nor SO2 can be exclusively credited with causing
+a quality to be higher or lower. These weak and medium correlations do imply that they
+have an influence, especially in the case of alcohol content.
+
+I, not knowing much about wine, expected the total SO2 level to be more 
+correlated to the alcohol percentage than it turned out to be.
+
+My reasoning being SO2 is used as a preservative to prevent the wine from spoiling
+so logically I figured higher alcohol concentration would negate the need for preservatives.
+Recall from the the plot, the trend line does slope downward
+as percentage rises, but this slope is gradual.
+Visually displaying that there is a weak correlation, but alcohol percentage 
+clearly does not significantly influence higher or lower total SO2. 
+
+These discoveries lead me to believe that no two variable alone can influence the quality rating significantly. 
+
+
+### The strongest relationship:
+
+
+The strongest relationship I found was only a moderate level of correlation
+between Alcohol percentage and quality. 
+Not enough to hypothesize alcohol content -> quality causation but, enough to 
+explore multivariate plots focusing on quality and alcohol percentage.
+
+
+# Multivariate Plots Section
+
+
+```{r echo=FALSE, Multivariate_Plots}
+#bucket sugar into ranges and plot alcohol by fixed acidity and residual sugar
+
+reds$sugar_bucket <- cut(reds$residual.sugar, c(2,4,6,8,10,12,14,16))
+
+
+ggplot(aes(x =alcohol, y = fixed.acidity),
+       data = subset(reds, !is.na(sugar_bucket))) + 
+  geom_jitter(aes(color = sugar_bucket), alpha= 1/2) +
+  scale_x_continuous(breaks = seq(8, 16, .5)) +
+  scale_y_continuous(breaks = seq(4, 16, .5)) +
+  scale_color_brewer(palette = "RdYlGn") + 
+  theme_dark()
+```
+
+
+In the above plot we can see the amount of residual sugar in comparison to alcohol
+percentage and fixed acidity. The first thing we notice is that the most common 
+amount of residual sugar is between 2 and 4 mg/L.
+We also will notice clusters forming along the lines of common alcohol contents.
+like, 9.3, 9.5, 9.6, 10.5, 11 etc.
+
+next we can see that fixed acidity doesn't seem to have any repeating lines, 
+but the most dense cluster is between ~6.9 and 10.
+Which seems about right as the IQR of fixed density is between to 7.10 and 9.20
+
+There doesn't seem to be any ground breaking information in this plot, we do know that
+there is an amount of residual sugar, that amount is most often between 2 and 4 and
+that the amount left over is not noticeably effected by alcohol percentage or fixed acidity. 
+
+
+```{r}
+#alcohol by volatile acidity and quality
+
+ggplot(aes(x =volatile.acidity, y = alcohol),
+       data = subset(reds, !is.na(reds$quality))) + 
+  geom_point(aes(color = factor(quality)), stat = 'summary', fun.y = median) +
+  scale_x_continuous(breaks = seq(0,2,0.1)) +
+  scale_y_continuous(breaks = seq(8,15,1)) +
+  scale_color_brewer(palette = "RdYlGn") +
+  theme_dark()
+
+#range(reds$alcohol)
+
+```
+
+
+The above plot visualizes volatile acidity by alcohol percentage with the color representing the quality rating.
+
+First thing we notice is the way the quality ratings are broken up horizontally.
+For example we can quickly see that wines rated with a quality of 5 tend to be
+between 9% and 10% alcohol. The range of volatile acidity tends to be larger, but
+there are distinct clusters. for example 0.7 - 0.74.
+
+We notice similar patters in the relationships, quality of 6 wines are more densely clustered
+between 10% and 11%, a noticeable cluster is between volatile acidity 4.7 - 0.5
+
+It's no surprise to see the most dense clusters represented by quality 5 and 6 as we
+saw in the univariant section that these two quality's by far had the highest counts of wine.
+
+
+```{r}
+#bucket pH level. Plot density by fixed acidtiy and pH bucket
+
+reds$pH_bucket <- cut(reds$pH, c(2, 2.5, 3, 3.5, 4, 4.5, 5))
+
+#table(reds$pH_bucket)
+
+ggplot(aes(x =density, y = fixed.acidity),
+       data = subset(reds, !is.na(reds$pH_bucket))) +
+  geom_point(aes(color = pH_bucket)) +
+  scale_color_brewer(palette = "Set1", guide_legend(title = "pH Range")) +
+  xlab("Density measured in mg/L") +
+  ylab("Fixed Acidty mg/L") +
+  ggtitle("pH level by Density and Fixed Acidity") +
+  theme_classic()
+
+```
+
+
+The above plot shows the fixed acidity level by density of each wine. 
+The color represents that particular wines pH level. 
+
+We already know from the bivariant exploration that density and fixed acidity have
+a positive correlation. 
+With pH added we're seeing the most common pH level is by far between 3 - 3.5. 
+We can also see a dense cluster of that particular pH level 
+between 4 and 8 fixed acidity by 0.995 and ~0.997 density
+
+This tells us that within those ranges of density and fixed acidity pH level tends to be 
+between 3 and 3.5. 
+
+An interesting thing in this plot is the outliers, look at the top right. 
+Something funny is happening with those wines. they're well beyond the 3rd quartile of
+both density and fixed acidity as well as being one of the less common pH levels.
+It would be interesting to dive in and find out why. 
+
+
+# Multivariate Analysis
+
+
+Through the analysis I've found a handful of weak to moderate correlations.
+These are interesting findings that indicate no two features seem to
+have a substantial impact on quality rating but instead a set of 3 or more features must be at play.
+
+I found it interesting that residual sugar was unaffected by alcohol percentage, or 
+the wines fixed acidity level. I had expected higher alcohol percentage, meaning more sugars converted to alcohol, would lead to less leftover sugar.
+The most common amount of residual sugar was between 2-4 units and it was 
+pretty evenly spread across the plot
+
+
+------
+
+# Final Takeaway Plots and Summary
+
+### Plot One
+```{r echo=FALSE, Plot_One}
+#univariante plot of quality
+
+ggplot(data = reds, aes(x = quality)) +
+  ggtitle("Counts of Wine Per-Quality Rating") +
+  geom_bar(color = 'black', fill = 'skyblue') +
+  xlab("Quality rating") + 
+  ylab("Count of wines") + 
+  scale_x_continuous(breaks = seq(3,8,1))
+```
+
+
+### Description One
+
+The first plot we visualized displays the counts of wine per Quality rating.
+This plot is important because I'm able to clearly see the distributions. 
+Right away I know that if I perform more analysis using quality as a variable I am likely to see large clusters
+of data at qualities of 5 and 6. It also lets me know that if I do not see such a pattern
+there is something interesting worth looking into.
+
+This information also provides perspective of how I might subset the data for comparison. 
+Say I examined only entries of rating 5 and 6 I can identify correlations and trends.
+Then examine a smaller sample, like the wines rated higher than 6 to attempt to identify 
+significant differences that might indicate a correlation with a higher rating.
+
+
+### Plot Two
+```{r echo=FALSE, Plot_Two}
+#plot of quality and alcohol
+
+ggplot(data = reds, aes(x = quality, y = alcohol)) +
+  geom_jitter(color = 'orange', alpha = 1/4) +
+  geom_line(stat = 'summary', fun.y = mean, color = 'blue') +
+  ggtitle("Alcohol percentage by Quality Rating") +
+  xlab("Quality Rating") +
+  ylab("Alcohol Percentage")
+
+```
+
+### Description Two
+
+We can see the distribution of alcohol percentage across quality with a line representing 
+mean percentages overlayed.
+
+This plot is important because it's indicating both a trend and a lack of causation.
+First take notice of the density around quality 5 and 6. We already know that makes sense
+because 5 and 6 have a much larger count of wines than any other rating.
+
+If we look at the mean line we notice an upward trend. With the exception of 
+quality level 4, which in this plot is being effected by an outlier.
+
+Now this trend does imply a positive correlation between alcohol percentage and 
+quality rating. It does not imply causation, if you look at the 
+data of quality 8 you'll notice its sparse and quite spread out.
+In this case the mean is informative but not the most reliable measurement. 
+
+We can reinforce our conclusion with Pearson's Correlation.
+The correlation coefficient for quality and alcohol is (rounded) 0.5
+indicating there is indeed a moderate coloration.
+
+
+### Plot Three
+```{r echo=FALSE, Plot_Three}
+#plot ph level by fixed acidty and color
+
+ggplot(aes(x =density, y = fixed.acidity),
+       data = subset(reds, !is.na(reds$pH_bucket))) +
+  geom_point(aes(color = pH_bucket)) +
+  scale_color_brewer(palette = "RdYlGn", guide_legend(title = "pH Range")) +
+  scale_y_continuous(breaks = seq(0,20,2)) +
+  scale_x_continuous(breaks = seq(0,1.5, 0.001)) +
+  xlab("Density measured in mg/L") +
+  ylab("Fixed Acidty mg/L") +
+  ggtitle("pH level by Density and Fixed Acidity")
+
+```
+
+### Description Three
+
+After the bivariant exploration, I didn't find any significant correlations between
+a variable and the quality. So I began trying to explore other variables for interesting
+findings.
+
+The above plot shows the fixed acidity level by density of each wine. The color
+represents that particular wines pH level. 
+We already know from the bivariant exploration that density and fixed acidity have
+a positive correlation. 
+With pH added we're seeing the most common pH level is between 3-3.5. 
+We can also see a dense cluster of that particular pH level 
+between 4 and 8 fixed acidity by 0.995 and ~0.997 density
+
+This tells us that within those ranges of density and fixed acidity pH level tends to be 
+between 3 and 3.5. 
+
+An interesting thing in this plot is the outliers, look at the top right. 
+Something funny is happening with those wines. They're well beyond the 3rd quartile of
+both density and fixed acidity as well as being one of the less common pH levels.
+It would be interesting to dive in and find out why.
+
+------
+
+# Reflection
+
+
+I began by looking at each variable to get a feel for the data. 1599 rows of data
+comprised of 11 variables and the quality rating. After exploring individual variables and taking note of
+interesting or anomalous events. This initial look provided some conclusions. 
+The mode Quality rating is 5, the mean Quality rating is ~6. 
+The largest counts of wines fell in quality rating 5 and 6. Both quality 5 and 6 have counts over 600, where as the counts for 3, 4, 7 and 8 are all below 200 and 0, 2, 9 and 10 have none at all. These findings were useful when I later began to compare two and more variables, I wasn't surprised when I found items clustering around quality's of 5 and 6, but no items present below 3 or above 8.
+
+When I began trying to find correlations between The quality rating and variable factors such as alcohol percentage, total amount of Sulfur Dioxide, fixed acidity level...etc.
+My exploration lead me to the conclusion that none of these features individually have significant sway over the quality rating of the wines. I was able to determine that Quality has a negative correlation with Volatile Acidity (r = -0.4) and a positive coloration with alcohol percentage (r = 0.5).
+These correlations do not prove any kind of causation but they might prove to be key features in a larger combination.
+
+Limitations to this project are firstly, unclear units of measure. I found this data I can make guesses about 
+standard units of measure for wine but at the end of the day I can't be sure these measurements are accurate.
+The rating system of the wines is also rather a mystery. The introduction to the data states each wine was rated
+by at least three reviewers but it is not clarified how these ratings are applied.
+There are no unique identifiers about the wine it self in the data. So, I do not know if the total reviews are averaged per-wine and placed in the data set or if each wine exists multiple times throughout the data set.
+
+If a client is looking to improve their wines rating, I would suggest clarifying the above points. 
+For example if each wine is listed multiple times per review it would be possible to understand which reviewer biases are being included. Say, one reviewer often highly rates wines with a higher alcohol content.
+A downside of this approach could lead the client to only allow their wine to be reviewed by reviewers who favor their type of wine but that's a risk regardless of the data.
